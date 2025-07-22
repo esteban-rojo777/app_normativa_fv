@@ -1,8 +1,9 @@
 streamlit
 langchain
+langchain-community
+langchain-openai
 openai
 chromadb
 pypdf
 tiktoken
-langchain-community
 pysqlite3-binary
