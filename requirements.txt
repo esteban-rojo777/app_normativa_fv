@@ -1,9 +1,9 @@
 streamlit
-langchain
-langchain-community
-langchain-openai
+langchain==0.1.20
+langchain-community==0.0.38
+langchain-openai==0.1.6
 openai
-chromadb
+chromadb==0.4.24
 pypdf
 tiktoken
 pysqlite3-binary
