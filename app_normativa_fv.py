@@ -4,6 +4,11 @@ import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 # --------------------------
 
+# --- PARCHE PARA ASYNCIO ---
+import nest_asyncio
+nest_asyncio.apply()
+# ---------------------------
+
 import os
 import streamlit as st
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings

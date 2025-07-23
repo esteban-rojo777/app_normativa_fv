@@ -6,3 +6,4 @@ chromadb==0.4.24
 pypdf
 tiktoken
 pysqlite3-binary
+nest-asyncio
