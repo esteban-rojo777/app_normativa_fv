@@ -12,7 +12,7 @@ from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.prompts import PromptTemplate
-from langchain.retrievers.multi_query import MultiQueryRetriever # <-- IMPORTACIÓN NUEVA
+from langchain.retrievers.multi_query import MultiQueryRetriever
 
 # --- CONSTANTES Y RUTAS ---
 DIRECTORIO_PERSISTENTE = "faiss_index"
@@ -52,8 +52,6 @@ os.makedirs(DIRECTORIO_DOCUMENTOS, exist_ok=True)
 
 @st.cache_resource
 def cargar_y_procesar_documentos(ruta_documentos):
-    """Carga y procesa los PDFs para crear la base de datos vectorial con FAISS."""
-    # AÑADIMOS TRANSPARENCIA: MOSTRAMOS LOS ARCHIVOS ENCONTRADOS
     st.info(f"Buscando documentos en '{ruta_documentos}'...")
     archivos_pdf = [f for f in os.listdir(ruta_documentos) if f.endswith('.pdf')]
     
@@ -83,38 +81,39 @@ def cargar_y_procesar_documentos(ruta_documentos):
 
 @st.cache_resource
 def cargar_cadena_qa():
-    """Carga la cadena de consulta y recuperación (RetrievalQA) con MultiQueryRetriever."""
+    """Carga la cadena de consulta y recuperación (RetrievalQA) con prompt estricto."""
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     
     vectordb = FAISS.load_local(DIRECTORIO_PERSISTENTE, embeddings, allow_dangerous_deserialization=True)
     
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2, convert_system_message_to_human=True)
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0, convert_system_message_to_human=True) # Temperature en 0 para respuestas directas
+    retriever = vectordb.as_retriever(search_kwargs={"k": 7})
     
-    # --- CAMBIO A MULTI-QUERY RETRIEVER ---
-    retriever = MultiQueryRetriever.from_llm(
-        retriever=vectordb.as_retriever(),
-        llm=llm
-    )
-    # ------------------------------------
-    
+    # --- NUEVO PROMPT ESTRICTO ---
     template = """
-    Actúa como un experto en normativa fotovoltaica. Tu tarea es analizar el siguiente contexto extraído de documentos normativos y responder la pregunta del usuario de manera clara, profesional y concisa en español.
+    Tu tarea es responder la pregunta del usuario basándote estricta y exclusivamente en el contexto normativo proporcionado. No añadas ninguna información que no esté explícitamente escrita en el texto.
 
-    No te limites a repetir el texto. Sintetiza la información, haz deducciones lógicas basadas en los artículos proporcionados y ofrece una conclusión práctica. Si el texto no aborda directamente la pregunta, indícalo, pero también explica las posibles interpretaciones o artículos relacionados que podrían aplicarse al caso.
+    Instrucciones:
+    1.  Lee la pregunta y el contexto cuidadosamente.
+    2.  Formula una respuesta directa a la pregunta utilizando únicamente las frases y datos del contexto.
+    3.  Si la respuesta se encuentra en el texto, respóndela.
+    4.  Si el contexto no contiene la información necesaria para responder la pregunta, debes decir explícitamente: "La información no se encuentra en los documentos proporcionados."
+    5.  Responde siempre en español.
 
-    Contexto normativo:
+    Contexto:
     {context}
 
-    Pregunta del usuario: {question}
+    Pregunta: {question}
 
-    Respuesta de experto:
+    Respuesta:
     """
     prompt = PromptTemplate(template=template, input_variables=["context", "question"])
+    # -----------------------------
     
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
-        retriever=retriever, # Usamos el nuevo retriever
+        retriever=retriever,
         return_source_documents=True,
         chain_type_kwargs={"prompt": prompt}
     )
