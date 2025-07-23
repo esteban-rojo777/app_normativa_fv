@@ -1,9 +1,3 @@
-# --- PARCHE PARA SQLITE ---
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-# --------------------------
-
 # --- PARCHE PARA ASYNCIO ---
 import nest_asyncio
 nest_asyncio.apply()
@@ -13,13 +7,13 @@ import os
 import streamlit as st
 import shutil
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-# --- CONSTANTES Y RUTAS (MOVIDAS AQUÍ ARRIBA) ---
-DIRECTORIO_PERSISTENTE = "db_chroma_streamlit"
+# --- CONSTANTES Y RUTAS ---
+DIRECTORIO_PERSISTENTE = "faiss_index" # Cambiamos el nombre para no usar la carpeta antigua
 DIRECTORIO_DOCUMENTOS = "documentos_normativos"
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
@@ -36,7 +30,7 @@ with st.sidebar:
     else:
         st.warning("Por favor, ingresa tu API Key de Google AI para continuar.")
         st.stop()
-
+    
     st.divider()
 
     st.subheader("Gestión de la Base de Datos")
@@ -49,15 +43,14 @@ with st.sidebar:
         else:
             st.info("No hay ninguna base de datos para borrar.")
 
-
 # Crear directorio para documentos si no existe
 os.makedirs(DIRECTORIO_DOCUMENTOS, exist_ok=True)
 
-# --- FUNCIONES CLAVE (CON CACHÉ PARA EFICIENCIA) ---
+# --- FUNCIONES CLAVE (ACTUALIZADAS PARA FAISS) ---
 
 @st.cache_resource
 def cargar_y_procesar_documentos(ruta_documentos):
-    """Carga y procesa los PDFs para crear la base de datos vectorial."""
+    """Carga y procesa los PDFs para crear la base de datos vectorial con FAISS."""
     st.info(f"Buscando documentos en '{ruta_documentos}'...")
     documentos_cargados = []
     for archivo in os.listdir(ruta_documentos):
@@ -75,23 +68,25 @@ def cargar_y_procesar_documentos(ruta_documentos):
 
     st.info("Creando embeddings y la base de datos vectorial (puede tardar un momento)...")
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    
+    # Crear la base de datos FAISS y guardarla en disco
+    vectordb = FAISS.from_documents(fragmentos, embeddings)
+    vectordb.save_local(DIRECTORIO_PERSISTENTE)
 
-    vectordb = Chroma.from_documents(
-        documents=fragmentos,
-        embedding=embeddings,
-        persist_directory=DIRECTORIO_PERSISTENTE
-    )
     st.success("¡Base de datos vectorial creada y guardada con éxito!")
     return vectordb
 
 @st.cache_resource
 def cargar_cadena_qa():
-    """Carga la cadena de consulta y recuperación (RetrievalQA)."""
+    """Carga la cadena de consulta y recuperación (RetrievalQA) desde FAISS."""
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    vectordb = Chroma(persist_directory=DIRECTORIO_PERSISTENTE, embedding_function=embeddings)
+    
+    # Cargar la base de datos FAISS desde el disco
+    vectordb = FAISS.load_local(DIRECTORIO_PERSISTENTE, embeddings, allow_dangerous_deserialization=True)
+    
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.1, convert_system_message_to_human=True)
     retriever = vectordb.as_retriever(search_kwargs={"k": 5})
-
+    
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
@@ -117,7 +112,7 @@ if not os.path.exists(DIRECTORIO_PERSISTENTE):
                 for uploaded_file in uploaded_files:
                     with open(os.path.join(DIRECTORIO_DOCUMENTOS, uploaded_file.name), "wb") as f:
                         f.write(uploaded_file.getbuffer())
-
+                
                 with st.spinner("Procesando documentos..."):
                     cargar_y_procesar_documentos(DIRECTORIO_DOCUMENTOS)
                 st.rerun()
@@ -125,7 +120,7 @@ if not os.path.exists(DIRECTORIO_PERSISTENTE):
                 st.error("No has subido ningún archivo.")
 else:
     qa_chain = cargar_cadena_qa()
-
+    
     st.header("Haz tu Consulta 💬")
     pregunta_usuario = st.text_area("Escribe aquí tu pregunta sobre la normativa:")
 
@@ -134,10 +129,10 @@ else:
             with st.spinner("Buscando en la normativa y generando respuesta..."):
                 try:
                     respuesta = qa_chain.invoke(pregunta_usuario)
-
+                    
                     st.subheader("Respuesta:")
                     st.write(respuesta["result"])
-
+                    
                     with st.expander("Ver fuentes utilizadas en la normativa"):
                         for doc in respuesta["source_documents"]:
                             nombre_archivo = os.path.basename(doc.metadata.get('source', 'N/A'))
