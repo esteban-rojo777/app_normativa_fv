@@ -8,6 +8,7 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import nest_asyncio
 nest_asyncio.apply()
 # ---------------------------
+import shutil
 
 import os
 import streamlit as st
@@ -31,6 +32,18 @@ with st.sidebar:
     else:
         st.warning("Por favor, ingresa tu API Key de Google AI para continuar.")
         st.stop()
+        
+        st.divider() # Añade una línea divisoria
+
+    st.subheader("Gestión de la Base de Datos")
+    if st.button("Reiniciar y borrar base de datos"):
+        if os.path.exists(DIRECTORIO_PERSISTENTE):
+            with st.spinner("Borrando base de datos..."):
+                shutil.rmtree(DIRECTORIO_PERSISTENTE)
+            st.success("Base de datos borrada. La aplicación se recargará.")
+            st.rerun()
+        else:
+            st.info("No hay ninguna base de datos para borrar.")
 
 # --- DIRECTORIOS Y RUTAS ---
 DIRECTORIO_PERSISTENTE = "db_chroma_streamlit"
