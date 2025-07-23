@@ -11,20 +11,20 @@ from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.prompts import PromptTemplate # <-- IMPORTACI¨®N NUEVA
+from langchain.prompts import PromptTemplate # <-- IMPORTACIè»ŠN NUEVA
 
 # --- CONSTANTES Y RUTAS ---
 DIRECTORIO_PERSISTENTE = "faiss_index"
 DIRECTORIO_DOCUMENTOS = "documentos_normativos"
 
-# --- CONFIGURACI¨®N DE LA P¨¢GINA ---
+# --- CONFIGURACIè»ŠN DE LA PèŠGINA ---
 st.set_page_config(page_title="Asistente de Normativa FV", page_icon="??", layout="wide")
 st.title("?? Asistente de Consulta para Normativas Fotovoltaicas")
-st.write("Esta aplicaci¨®n te permite hacer consultas en lenguaje natural sobre tus documentos de normativa. Sube tus PDFs, haz una pregunta y obt¨¦n una respuesta basada en ellos.")
+st.write("Esta aplicaciè»Šn te permite hacer consultas en lenguaje natural sobre tus documentos de normativa. Sube tus PDFs, haz una pregunta y obtè°·n una respuesta basada en ellos.")
 
-# --- CONFIGURACI¨®N DE LA API KEY Y GESTI¨®N DE BD ---
+# --- CONFIGURACIè»ŠN DE LA API KEY Y GESTIè»ŠN DE BD ---
 with st.sidebar:
-    st.header("Configuraci¨®n")
+    st.header("Configuraciè»Šn")
     google_api_key = st.text_input("Ingresa tu API Key de Google AI", type="password")
     if google_api_key:
         os.environ["GOOGLE_API_KEY"] = google_api_key
@@ -34,12 +34,12 @@ with st.sidebar:
     
     st.divider()
 
-    st.subheader("Gesti¨®n de la Base de Datos")
+    st.subheader("Gestiè»Šn de la Base de Datos")
     if st.button("Reiniciar y borrar base de datos"):
         if os.path.exists(DIRECTORIO_PERSISTENTE):
             with st.spinner("Borrando base de datos..."):
                 shutil.rmtree(DIRECTORIO_PERSISTENTE)
-            st.success("Base de datos borrada. La aplicaci¨®n se recargar¨¢.")
+            st.success("Base de datos borrada. La aplicaciè»Šn se recargarèŠ.")
             st.rerun()
         else:
             st.info("No hay ninguna base de datos para borrar.")
@@ -73,12 +73,12 @@ def cargar_y_procesar_documentos(ruta_documentos):
     vectordb = FAISS.from_documents(fragmentos, embeddings)
     vectordb.save_local(DIRECTORIO_PERSISTENTE)
 
-    st.success("?Base de datos vectorial creada y guardada con ¨¦xito!")
+    st.success("?Base de datos vectorial creada y guardada con è°·xito!")
     return vectordb
 
 @st.cache_resource
 def cargar_cadena_qa():
-    """Carga la cadena de consulta y recuperaci¨®n (RetrievalQA) con prompt en espa?ol."""
+    """Carga la cadena de consulta y recuperaciè»Šn (RetrievalQA) con prompt en espa?ol."""
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     
     vectordb = FAISS.load_local(DIRECTORIO_PERSISTENTE, embeddings, allow_dangerous_deserialization=True)
@@ -88,7 +88,7 @@ def cargar_cadena_qa():
     
     # --- NUEVA PLANTILLA DE PROMPT EN ESPA?OL ---
     template = """
-    Responde la pregunta en espa?ol bas¨¢ndote ¨²nicamente en el siguiente contexto:
+    Responde la pregunta en espa?ol basèŠndote è¿†nicamente en el siguiente contexto:
     {context}
 
     Pregunta: {question}
@@ -105,14 +105,14 @@ def cargar_cadena_qa():
     )
     return qa_chain
 
-# --- L¨®GICA PRINCIPAL DE LA APLICACI¨®N ---
+# --- Lè»ŠGICA PRINCIPAL DE LA APLICACIè»ŠN ---
 
 if not os.path.exists(DIRECTORIO_PERSISTENTE):
     st.warning("Base de datos vectorial no encontrada. Debes cargar documentos para crear una.")
     with st.sidebar:
         st.subheader("Cargar Documentos")
         uploaded_files = st.file_uploader(
-            "Sube tus archivos PDF de normativas aqu¨ª",
+            "Sube tus archivos PDF de normativas aquèµ¤",
             type="pdf",
             accept_multiple_files=True
         )
@@ -127,12 +127,12 @@ if not os.path.exists(DIRECTORIO_PERSISTENTE):
                     cargar_y_procesar_documentos(DIRECTORIO_DOCUMENTOS)
                 st.rerun()
             else:
-                st.error("No has subido ning¨²n archivo.")
+                st.error("No has subido ningè¿†n archivo.")
 else:
     qa_chain = cargar_cadena_qa()
     
     st.header("Haz tu Consulta ??")
-    pregunta_usuario = st.text_area("Escribe aqu¨ª tu pregunta sobre la normativa:")
+    pregunta_usuario = st.text_area("Escribe aquèµ¤ tu pregunta sobre la normativa:")
 
     if st.button("Obtener Respuesta"):
         if pregunta_usuario:
@@ -146,10 +146,10 @@ else:
                     with st.expander("Ver fuentes utilizadas en la normativa"):
                         for doc in respuesta["source_documents"]:
                             nombre_archivo = os.path.basename(doc.metadata.get('source', 'N/A'))
-                            st.info(f"**Fuente:** {nombre_archivo} | **P¨¢gina:** {doc.metadata.get('page', 'N/A') + 1}")
+                            st.info(f"**Fuente:** {nombre_archivo} | **PèŠgina:** {doc.metadata.get('page', 'N/A') + 1}")
                             st.caption(doc.page_content)
 
                 except Exception as e:
-                    st.error(f"Ocurri¨® un error: {e}")
+                    st.error(f"Ocurriè»Š un error: {e}")
         else:
             st.warning("Por favor, escribe una pregunta.")
