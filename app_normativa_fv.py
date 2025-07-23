@@ -52,7 +52,7 @@ def cargar_y_procesar_documentos(ruta_documentos):
         return None
 
     st.info("Dividiendo documentos en fragmentos...")
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=200)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=5000, chunk_overlap=500)
     fragmentos = text_splitter.split_documents(documentos_cargados)
 
     st.info("Creando embeddings y la base de datos vectorial (puede tardar un momento)...")
