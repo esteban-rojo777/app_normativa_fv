@@ -80,35 +80,41 @@ def cargar_y_procesar_documentos(ruta_documentos):
     return vectordb
 
 @st.cache_resource
+@st.cache_resource
 def cargar_cadena_qa():
-    """Carga la cadena de consulta y recuperaci贸n (RetrievalQA) con prompt estricto."""
+    """Carga la cadena de consulta y recuperación (RetrievalQA) con un prompt de experto equilibrado."""
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     
     vectordb = FAISS.load_local(DIRECTORIO_PERSISTENTE, embeddings, allow_dangerous_deserialization=True)
     
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0, convert_system_message_to_human=True) # Temperature en 0 para respuestas directas
-    retriever = vectordb.as_retriever(search_kwargs={"k": 7})
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.1, convert_system_message_to_human=True) # Subimos un poco la temperatura
     
-    # --- NUEVO PROMPT ESTRICTO ---
+    retriever = MultiQueryRetriever.from_llm(
+        retriever=vectordb.as_retriever(search_kwargs={"k": 7}), # Mantenemos el MultiQuery
+        llm=llm
+    )
+    
+    # --- PROMPT EQUILIBRADO ---
     template = """
-    Tu tarea es responder la pregunta del usuario bas谩ndote estricta y exclusivamente en el contexto normativo proporcionado. No a帽adas ninguna informaci贸n que no est茅 expl铆citamente escrita en el texto.
+    Actúa como un Asistente experto en Normativa Eléctrica, especializado en plantas fotovoltaicas. Tu objetivo es proporcionar respuestas precisas y útiles basadas en la información extraída de los documentos normativos.
 
+    Utiliza el siguiente contexto para responder la pregunta del usuario en espa?ol.
+    
     Instrucciones:
-    1.  Lee la pregunta y el contexto cuidadosamente.
-    2.  Formula una respuesta directa a la pregunta utilizando 煤nicamente las frases y datos del contexto.
-    3.  Si la respuesta se encuentra en el texto, resp贸ndela.
-    4.  Si el contexto no contiene la informaci贸n necesaria para responder la pregunta, debes decir expl铆citamente: "La informaci贸n no se encuentra en los documentos proporcionados."
-    5.  Responde siempre en espa帽ol.
+    1. Basa tu respuesta directamente en la información del contexto proporcionado.
+    2. Sintetiza la información de los diferentes artículos para dar una respuesta completa y coherente. Si el texto muestra un caso general, explica cómo se aplica al caso específico de la pregunta del usuario.
+    3. Si la respuesta no se puede encontrar o inferir razonablemente del texto, indica claramente qué información específica no fue encontrada en los documentos.
+    4. Estructura tu respuesta de forma clara, usando listas o párrafos según sea necesario para facilitar la lectura.
 
     Contexto:
     {context}
 
     Pregunta: {question}
 
-    Respuesta:
+    Respuesta Asistente:
     """
     prompt = PromptTemplate(template=template, input_variables=["context", "question"])
-    # -----------------------------
+    # -------------------------
     
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
@@ -118,7 +124,6 @@ def cargar_cadena_qa():
         chain_type_kwargs={"prompt": prompt}
     )
     return qa_chain
-
 # --- L脫GICA PRINCIPAL DE LA APLICACI脫N ---
 
 if not os.path.exists(DIRECTORIO_PERSISTENTE):
