@@ -8,22 +8,26 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import nest_asyncio
 nest_asyncio.apply()
 # ---------------------------
-import shutil
 
 import os
 import streamlit as st
+import shutil
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
+# --- CONSTANTES Y RUTAS (MOVIDAS AQUÍ ARRIBA) ---
+DIRECTORIO_PERSISTENTE = "db_chroma_streamlit"
+DIRECTORIO_DOCUMENTOS = "documentos_normativos"
+
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Asistente de Normativa FV", page_icon="💡", layout="wide")
 st.title("💡 Asistente de Consulta para Normativas Fotovoltaicas")
 st.write("Esta aplicación te permite hacer consultas en lenguaje natural sobre tus documentos de normativa. Sube tus PDFs, haz una pregunta y obtén una respuesta basada en ellos.")
 
-# --- CONFIGURACIÓN DE LA API KEY ---
+# --- CONFIGURACIÓN DE LA API KEY Y GESTIÓN DE BD ---
 with st.sidebar:
     st.header("Configuración")
     google_api_key = st.text_input("Ingresa tu API Key de Google AI", type="password")
@@ -32,8 +36,8 @@ with st.sidebar:
     else:
         st.warning("Por favor, ingresa tu API Key de Google AI para continuar.")
         st.stop()
-        
-        st.divider() # Añade una línea divisoria
+
+    st.divider()
 
     st.subheader("Gestión de la Base de Datos")
     if st.button("Reiniciar y borrar base de datos"):
@@ -45,13 +49,9 @@ with st.sidebar:
         else:
             st.info("No hay ninguna base de datos para borrar.")
 
-# --- DIRECTORIOS Y RUTAS ---
-DIRECTORIO_PERSISTENTE = "db_chroma_streamlit"
-DIRECTORIO_DOCUMENTOS = "documentos_normativos"
 
 # Crear directorio para documentos si no existe
 os.makedirs(DIRECTORIO_DOCUMENTOS, exist_ok=True)
-
 
 # --- FUNCIONES CLAVE (CON CACHÉ PARA EFICIENCIA) ---
 
@@ -75,6 +75,7 @@ def cargar_y_procesar_documentos(ruta_documentos):
 
     st.info("Creando embeddings y la base de datos vectorial (puede tardar un momento)...")
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+
     vectordb = Chroma.from_documents(
         documents=fragmentos,
         embedding=embeddings,
@@ -83,13 +84,14 @@ def cargar_y_procesar_documentos(ruta_documentos):
     st.success("¡Base de datos vectorial creada y guardada con éxito!")
     return vectordb
 
+@st.cache_resource
 def cargar_cadena_qa():
     """Carga la cadena de consulta y recuperación (RetrievalQA)."""
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vectordb = Chroma(persist_directory=DIRECTORIO_PERSISTENTE, embedding_function=embeddings)
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.1, convert_system_message_to_human=True)
     retriever = vectordb.as_retriever(search_kwargs={"k": 5})
-    
+
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
@@ -100,7 +102,6 @@ def cargar_cadena_qa():
 
 # --- LÓGICA PRINCIPAL DE LA APLICACIÓN ---
 
-# Verificar si la base de datos ya existe. Si no, la crea.
 if not os.path.exists(DIRECTORIO_PERSISTENTE):
     st.warning("Base de datos vectorial no encontrada. Debes cargar documentos para crear una.")
     with st.sidebar:
@@ -116,16 +117,15 @@ if not os.path.exists(DIRECTORIO_PERSISTENTE):
                 for uploaded_file in uploaded_files:
                     with open(os.path.join(DIRECTORIO_DOCUMENTOS, uploaded_file.name), "wb") as f:
                         f.write(uploaded_file.getbuffer())
-                
+
                 with st.spinner("Procesando documentos..."):
                     cargar_y_procesar_documentos(DIRECTORIO_DOCUMENTOS)
-                st.rerun() # Recarga la app para reflejar el nuevo estado
+                st.rerun()
             else:
                 st.error("No has subido ningún archivo.")
 else:
-    # Si la base de datos ya existe, cargamos la cadena de consulta
     qa_chain = cargar_cadena_qa()
-    
+
     st.header("Haz tu Consulta 💬")
     pregunta_usuario = st.text_area("Escribe aquí tu pregunta sobre la normativa:")
 
@@ -133,14 +133,13 @@ else:
         if pregunta_usuario:
             with st.spinner("Buscando en la normativa y generando respuesta..."):
                 try:
-                    respuesta = qa_chain.invoke(pregunta_usuario) # <--- NUEVA LÍNEA CON INVOKE
+                    respuesta = qa_chain.invoke(pregunta_usuario)
 
                     st.subheader("Respuesta:")
                     st.write(respuesta["result"])
 
                     with st.expander("Ver fuentes utilizadas en la normativa"):
                         for doc in respuesta["source_documents"]:
-                            # Extraer el nombre del archivo de la ruta
                             nombre_archivo = os.path.basename(doc.metadata.get('source', 'N/A'))
                             st.info(f"**Fuente:** {nombre_archivo} | **Página:** {doc.metadata.get('page', 'N/A') + 1}")
                             st.caption(doc.page_content)
