@@ -168,7 +168,7 @@ else:
                     with st.expander("Ver fuentes utilizadas en la normativa"):
                         for doc in respuesta["source_documents"]:
                             nombre_archivo = os.path.basename(doc.metadata.get('source', 'N/A'))
-                            st.info(f"**Fuente:** {nombre_archivo} | **Página:** {doc.metadata.get('page', 'N/A', 0) + 1}")
+                            st.info(f"**Fuente:** {nombre_archivo} | **Página:** {doc.metadata.get('page', 0) + 1}")
                             st.caption(doc.page_content)
 
                 except Exception as e:
