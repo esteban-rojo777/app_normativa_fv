@@ -18,14 +18,14 @@ from langchain.retrievers.multi_query import MultiQueryRetriever
 DIRECTORIO_PERSISTENTE = "faiss_index"
 DIRECTORIO_DOCUMENTOS = "documentos_normativos"
 
-# --- CONFIGURACIÓN DE LA PÁGINA ---
-st.set_page_config(page_title="Asistente de Normativa FV", page_icon="💡", layout="wide")
-st.title("💡 Asistente de Consulta para Normativas Fotovoltaicas")
-st.write("Esta aplicación te permite hacer consultas en lenguaje natural sobre tus documentos de normativa. Sube tus PDFs, haz una pregunta y obtén una respuesta basada en ellos.")
+# --- CONFIGURACI脫N DE LA P脕GINA ---
+st.set_page_config(page_title="Asistente de Normativa FV", page_icon="馃挕", layout="wide")
+st.title("馃挕 Asistente de Consulta para Normativas Fotovoltaicas")
+st.write("Esta aplicaci贸n te permite hacer consultas en lenguaje natural sobre tus documentos de normativa. Sube tus PDFs, haz una pregunta y obt茅n una respuesta basada en ellos.")
 
-# --- CONFIGURACIÓN DE LA API KEY Y GESTIÓN DE BD ---
+# --- CONFIGURACI脫N DE LA API KEY Y GESTI脫N DE BD ---
 with st.sidebar:
-    st.header("Configuración")
+    st.header("Configuraci贸n")
     google_api_key = st.text_input("Ingresa tu API Key de Google AI", type="password")
     if google_api_key:
         os.environ["GOOGLE_API_KEY"] = google_api_key
@@ -35,12 +35,12 @@ with st.sidebar:
     
     st.divider()
 
-    st.subheader("Gestión de la Base de Datos")
+    st.subheader("Gesti贸n de la Base de Datos")
     if st.button("Reiniciar y borrar base de datos"):
         if os.path.exists(DIRECTORIO_PERSISTENTE):
             with st.spinner("Borrando base de datos..."):
                 shutil.rmtree(DIRECTORIO_PERSISTENTE)
-            st.success("Base de datos borrada. La aplicación se recargará.")
+            st.success("Base de datos borrada. La aplicaci贸n se recargar谩.")
             st.rerun()
         else:
             st.info("No hay ninguna base de datos para borrar.")
@@ -82,7 +82,7 @@ def cargar_y_procesar_documentos(ruta_documentos):
 @st.cache_resource
 @st.cache_resource
 def cargar_cadena_qa():
-    """Carga la cadena de consulta y recuperaci��n (RetrievalQA) con un prompt de experto equilibrado."""
+    """Carga la cadena de consulta y recuperación (RetrievalQA) con un prompt de experto equilibrado."""
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     
     vectordb = FAISS.load_local(DIRECTORIO_PERSISTENTE, embeddings, allow_dangerous_deserialization=True)
@@ -96,15 +96,15 @@ def cargar_cadena_qa():
     
     # --- PROMPT EQUILIBRADO ---
     template = """
-    Act��a como un Asistente experto en Normativa El��ctrica, especializado en plantas fotovoltaicas. Tu objetivo es proporcionar respuestas precisas y ��tiles basadas en la informaci��n extra��da de los documentos normativos.
+    Actúa como un Asistente experto en Normativa Eléctrica, especializado en plantas fotovoltaicas. Tu objetivo es proporcionar respuestas precisas y útiles basadas en la información extraída de los documentos normativos.
 
     Utiliza el siguiente contexto para responder la pregunta del usuario en espa?ol.
     
     Instrucciones:
-    1. Basa tu respuesta directamente en la informaci��n del contexto proporcionado.
-    2. Sintetiza la informaci��n de los diferentes art��culos para dar una respuesta completa y coherente. Si el texto muestra un caso general, explica c��mo se aplica al caso espec��fico de la pregunta del usuario.
-    3. Si la respuesta no se puede encontrar o inferir razonablemente del texto, indica claramente qu�� informaci��n espec��fica no fue encontrada en los documentos.
-    4. Estructura tu respuesta de forma clara, usando listas o p��rrafos seg��n sea necesario para facilitar la lectura.
+    1. Basa tu respuesta directamente en la información del contexto proporcionado.
+    2. Sintetiza la información de los diferentes artículos para dar una respuesta completa y coherente. Si el texto muestra un caso general, explica cómo se aplica al caso específico de la pregunta del usuario.
+    3. Si la respuesta no se puede encontrar o inferir razonablemente del texto, indica claramente qué información específica no fue encontrada en los documentos.
+    4. Estructura tu respuesta de forma clara, usando listas o párrafos según sea necesario para facilitar la lectura.
 
     Contexto:
     {context}
@@ -124,14 +124,14 @@ def cargar_cadena_qa():
         chain_type_kwargs={"prompt": prompt}
     )
     return qa_chain
-# --- LÓGICA PRINCIPAL DE LA APLICACIÓN ---
+# --- L脫GICA PRINCIPAL DE LA APLICACI脫N ---
 
 if not os.path.exists(DIRECTORIO_PERSISTENTE):
     st.warning("Base de datos vectorial no encontrada. Debes cargar documentos para crear una.")
     with st.sidebar:
         st.subheader("Cargar Documentos")
         uploaded_files = st.file_uploader(
-            "Sube tus archivos PDF de normativas aquí",
+            "Sube tus archivos PDF de normativas aqu铆",
             type="pdf",
             accept_multiple_files=True
         )
@@ -143,22 +143,22 @@ if not os.path.exists(DIRECTORIO_PERSISTENTE):
                         with open(os.path.join(DIRECTORIO_DOCUMENTOS, uploaded_file.name), "wb") as f:
                             f.write(uploaded_file.getbuffer())
                     
-                    with st.spinner("Procesando documentos... Esta operación puede tardar varios minutos."):
+                    with st.spinner("Procesando documentos... Esta operaci贸n puede tardar varios minutos."):
                         cargar_y_procesar_documentos(DIRECTORIO_DOCUMENTOS)
 
-                    st.success("¡Base de datos creada con éxito!")
-                    st.info("La aplicación se recargará para usar la nueva base de datos.")
+                    st.success("隆Base de datos creada con 茅xito!")
+                    st.info("La aplicaci贸n se recargar谩 para usar la nueva base de datos.")
                     st.rerun()
 
                 except Exception as e:
-                    st.error(f"Ocurrió un error al procesar los documentos: {e}")
+                    st.error(f"Ocurri贸 un error al procesar los documentos: {e}")
             else:
-                st.error("No has subido ningún archivo.")
+                st.error("No has subido ning煤n archivo.")
 else:
     qa_chain = cargar_cadena_qa()
     
-    st.header("Haz tu Consulta 💬")
-    pregunta_usuario = st.text_area("Escribe aquí tu pregunta sobre la normativa:")
+    st.header("Haz tu Consulta 馃挰")
+    pregunta_usuario = st.text_area("Escribe aqu铆 tu pregunta sobre la normativa:")
 
     if st.button("Obtener Respuesta"):
         if pregunta_usuario:
@@ -172,10 +172,10 @@ else:
                     with st.expander("Ver fuentes utilizadas en la normativa"):
                         for doc in respuesta["source_documents"]:
                             nombre_archivo = os.path.basename(doc.metadata.get('source', 'N/A'))
-                            st.info(f"**Fuente:** {nombre_archivo} | **Página:** {doc.metadata.get('page', 0) + 1}")
+                            st.info(f"**Fuente:** {nombre_archivo} | **P谩gina:** {doc.metadata.get('page', 0) + 1}")
                             st.caption(doc.page_content)
 
                 except Exception as e:
-                    st.error(f"Ocurrió un error: {e}")
+                    st.error(f"Ocurri贸 un error: {e}")
         else:
             st.warning("Por favor, escribe una pregunta.")
