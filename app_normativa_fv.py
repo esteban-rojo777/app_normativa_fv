@@ -77,21 +77,28 @@ def cargar_y_procesar_documentos(ruta_documentos):
     return vectordb
 
 @st.cache_resource
+@st.cache_resource
 def cargar_cadena_qa():
-    """Carga la cadena de consulta y recuperaci車n (RetrievalQA) con prompt en espa?ol."""
+    """Carga la cadena de consulta y recuperación (RetrievalQA) con prompt de experto en español."""
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     
     vectordb = FAISS.load_local(DIRECTORIO_PERSISTENTE, embeddings, allow_dangerous_deserialization=True)
     
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.1, convert_system_message_to_human=True)
-    retriever = vectordb.as_retriever(search_kwargs={"k": 5})
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2, convert_system_message_to_human=True)
+    retriever = vectordb.as_retriever(search_kwargs={"k": 7}) # Aumentamos a 7 para darle un poco más de contexto
     
-    # --- NUEVA PLANTILLA DE PROMPT EN ESPA?OL ---
+    # --- PROMPT MEJORADO CON PERSONA DE EXPERTO ---
     template = """
-    Responde la pregunta en espa?ol bas芍ndote 迆nicamente en el siguiente contexto:
+    Actúa como un experto en normativa fotovoltaica. Tu tarea es analizar el siguiente contexto extraído de documentos normativos y responder la pregunta del usuario de manera clara, profesional y concisa en español.
+
+    No te limites a repetir el texto. Sintetiza la información, haz deducciones lógicas basadas en los artículos proporcionados y ofrece una conclusión práctica. Si el texto no aborda directamente la pregunta, indícalo, pero también explica las posibles interpretaciones o artículos relacionados que podrían aplicarse al caso.
+
+    Contexto normativo:
     {context}
 
-    Pregunta: {question}
+    Pregunta del usuario: {question}
+
+    Respuesta de experto:
     """
     prompt = PromptTemplate(template=template, input_variables=["context", "question"])
     # ---------------------------------------------
@@ -101,10 +108,9 @@ def cargar_cadena_qa():
         chain_type="stuff",
         retriever=retriever,
         return_source_documents=True,
-        chain_type_kwargs={"prompt": prompt} # <-- A?ADIMOS EL PROMPT A LA CADENA
+        chain_type_kwargs={"prompt": prompt}
     )
     return qa_chain
-
 # --- L車GICA PRINCIPAL DE LA APLICACI車N ---
 
 if not os.path.exists(DIRECTORIO_PERSISTENTE):
