@@ -11,20 +11,20 @@ from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.prompts import PromptTemplate # <-- IMPORTACIè»ŠN NUEVA
+from langchain.prompts import PromptTemplate
 
 # --- CONSTANTES Y RUTAS ---
 DIRECTORIO_PERSISTENTE = "faiss_index"
 DIRECTORIO_DOCUMENTOS = "documentos_normativos"
 
-# --- CONFIGURACIè»ŠN DE LA PèŠGINA ---
+# --- CONFIGURACI¨®N DE LA P¨¢GINA ---
 st.set_page_config(page_title="Asistente de Normativa FV", page_icon="??", layout="wide")
 st.title("?? Asistente de Consulta para Normativas Fotovoltaicas")
-st.write("Esta aplicaciè»Šn te permite hacer consultas en lenguaje natural sobre tus documentos de normativa. Sube tus PDFs, haz una pregunta y obtè°·n una respuesta basada en ellos.")
+st.write("Esta aplicaci¨®n te permite hacer consultas en lenguaje natural sobre tus documentos de normativa. Sube tus PDFs, haz una pregunta y obt¨¦n una respuesta basada en ellos.")
 
-# --- CONFIGURACIè»ŠN DE LA API KEY Y GESTIè»ŠN DE BD ---
+# --- CONFIGURACI¨®N DE LA API KEY Y GESTI¨®N DE BD ---
 with st.sidebar:
-    st.header("Configuraciè»Šn")
+    st.header("Configuraci¨®n")
     google_api_key = st.text_input("Ingresa tu API Key de Google AI", type="password")
     if google_api_key:
         os.environ["GOOGLE_API_KEY"] = google_api_key
@@ -34,12 +34,12 @@ with st.sidebar:
     
     st.divider()
 
-    st.subheader("Gestiè»Šn de la Base de Datos")
+    st.subheader("Gesti¨®n de la Base de Datos")
     if st.button("Reiniciar y borrar base de datos"):
         if os.path.exists(DIRECTORIO_PERSISTENTE):
             with st.spinner("Borrando base de datos..."):
                 shutil.rmtree(DIRECTORIO_PERSISTENTE)
-            st.success("Base de datos borrada. La aplicaciè»Šn se recargarèŠ.")
+            st.success("Base de datos borrada. La aplicaci¨®n se recargar¨¢.")
             st.rerun()
         else:
             st.info("No hay ninguna base de datos para borrar.")
@@ -61,6 +61,7 @@ def cargar_y_procesar_documentos(ruta_documentos):
             documentos_cargados.extend(loader.load())
 
     if not documentos_cargados:
+        st.warning("No se encontraron archivos PDF en el directorio.")
         return None
 
     st.info("Dividiendo documentos en fragmentos...")
@@ -72,26 +73,23 @@ def cargar_y_procesar_documentos(ruta_documentos):
     
     vectordb = FAISS.from_documents(fragmentos, embeddings)
     vectordb.save_local(DIRECTORIO_PERSISTENTE)
-
-    st.success("?Base de datos vectorial creada y guardada con è°·xito!")
+    
     return vectordb
 
 @st.cache_resource
-@st.cache_resource
 def cargar_cadena_qa():
-    """Carga la cadena de consulta y recuperaciÃ³n (RetrievalQA) con prompt de experto en espaÃ±ol."""
+    """Carga la cadena de consulta y recuperaci¨®n (RetrievalQA) con prompt de experto en espa?ol."""
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     
     vectordb = FAISS.load_local(DIRECTORIO_PERSISTENTE, embeddings, allow_dangerous_deserialization=True)
     
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2, convert_system_message_to_human=True)
-    retriever = vectordb.as_retriever(search_kwargs={"k": 7}) # Aumentamos a 7 para darle un poco mÃ¡s de contexto
+    retriever = vectordb.as_retriever(search_kwargs={"k": 7})
     
-    # --- PROMPT MEJORADO CON PERSONA DE EXPERTO ---
     template = """
-    ActÃºa como un experto en normativa fotovoltaica. Tu tarea es analizar el siguiente contexto extraÃ­do de documentos normativos y responder la pregunta del usuario de manera clara, profesional y concisa en espaÃ±ol.
+    Act¨²a como un experto en normativa fotovoltaica. Tu tarea es analizar el siguiente contexto extra¨ªdo de documentos normativos y responder la pregunta del usuario de manera clara, profesional y concisa en espa?ol.
 
-    No te limites a repetir el texto. Sintetiza la informaciÃ³n, haz deducciones lÃ³gicas basadas en los artÃ­culos proporcionados y ofrece una conclusiÃ³n prÃ¡ctica. Si el texto no aborda directamente la pregunta, indÃ­calo, pero tambiÃ©n explica las posibles interpretaciones o artÃ­culos relacionados que podrÃ­an aplicarse al caso.
+    No te limites a repetir el texto. Sintetiza la informaci¨®n, haz deducciones l¨®gicas basadas en los art¨ªculos proporcionados y ofrece una conclusi¨®n pr¨¢ctica. Si el texto no aborda directamente la pregunta, ind¨ªcalo, pero tambi¨¦n explica las posibles interpretaciones o art¨ªculos relacionados que podr¨ªan aplicarse al caso.
 
     Contexto normativo:
     {context}
@@ -101,7 +99,6 @@ def cargar_cadena_qa():
     Respuesta de experto:
     """
     prompt = PromptTemplate(template=template, input_variables=["context", "question"])
-    # ---------------------------------------------
     
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
@@ -111,34 +108,46 @@ def cargar_cadena_qa():
         chain_type_kwargs={"prompt": prompt}
     )
     return qa_chain
-# --- Lè»ŠGICA PRINCIPAL DE LA APLICACIè»ŠN ---
+
+# --- L¨®GICA PRINCIPAL DE LA APLICACI¨®N ---
 
 if not os.path.exists(DIRECTORIO_PERSISTENTE):
     st.warning("Base de datos vectorial no encontrada. Debes cargar documentos para crear una.")
     with st.sidebar:
         st.subheader("Cargar Documentos")
         uploaded_files = st.file_uploader(
-            "Sube tus archivos PDF de normativas aquèµ¤",
+            "Sube tus archivos PDF de normativas aqu¨ª",
             type="pdf",
             accept_multiple_files=True
         )
 
         if st.button("Procesar y Crear Base de Datos"):
             if uploaded_files:
-                for uploaded_file in uploaded_files:
-                    with open(os.path.join(DIRECTORIO_DOCUMENTOS, uploaded_file.name), "wb") as f:
-                        f.write(uploaded_file.getbuffer())
-                
-                with st.spinner("Procesando documentos..."):
-                    cargar_y_procesar_documentos(DIRECTORIO_DOCUMENTOS)
-                st.rerun()
+                # --- BLOQUE CON MANEJO DE ERRORES A?ADIDO ---
+                try:
+                    # 1. Guardar archivos en disco
+                    for uploaded_file in uploaded_files:
+                        with open(os.path.join(DIRECTORIO_DOCUMENTOS, uploaded_file.name), "wb") as f:
+                            f.write(uploaded_file.getbuffer())
+                    
+                    # 2. Procesar documentos y crear la BD
+                    with st.spinner("Procesando documentos... Esta operaci¨®n puede tardar varios minutos."):
+                        cargar_y_procesar_documentos(DIRECTORIO_DOCUMENTOS)
+
+                    st.success("?Base de datos creada con ¨¦xito!")
+                    st.info("La aplicaci¨®n se recargar¨¢ para usar la nueva base de datos.")
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"Ocurri¨® un error al procesar los documentos: {e}")
+                # ----------------------------------------------
             else:
-                st.error("No has subido ningè¿†n archivo.")
+                st.error("No has subido ning¨²n archivo.")
 else:
     qa_chain = cargar_cadena_qa()
     
     st.header("Haz tu Consulta ??")
-    pregunta_usuario = st.text_area("Escribe aquèµ¤ tu pregunta sobre la normativa:")
+    pregunta_usuario = st.text_area("Escribe aqu¨ª tu pregunta sobre la normativa:")
 
     if st.button("Obtener Respuesta"):
         if pregunta_usuario:
@@ -152,10 +161,10 @@ else:
                     with st.expander("Ver fuentes utilizadas en la normativa"):
                         for doc in respuesta["source_documents"]:
                             nombre_archivo = os.path.basename(doc.metadata.get('source', 'N/A'))
-                            st.info(f"**Fuente:** {nombre_archivo} | **PèŠgina:** {doc.metadata.get('page', 'N/A') + 1}")
+                            st.info(f"**Fuente:** {nombre_archivo} | **P¨¢gina:** {doc.metadata.get('page', 'N/A', 0) + 1}")
                             st.caption(doc.page_content)
 
                 except Exception as e:
-                    st.error(f"Ocurriè»Š un error: {e}")
+                    st.error(f"Ocurri¨® un error: {e}")
         else:
             st.warning("Por favor, escribe una pregunta.")
