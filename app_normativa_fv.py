@@ -17,14 +17,14 @@ from langchain.prompts import PromptTemplate
 DIRECTORIO_PERSISTENTE = "faiss_index"
 DIRECTORIO_DOCUMENTOS = "documentos_normativos"
 
-# --- CONFIGURACI®ÆN DE LA P®¢GINA ---
+# --- CONFIGURACIËªäN DE LA PËäçGINA ---
 st.set_page_config(page_title="Asistente de Normativa FV", page_icon="??", layout="wide")
 st.title("?? Asistente de Consulta para Normativas Fotovoltaicas")
-st.write("Esta aplicaci®Æn te permite hacer consultas en lenguaje natural sobre tus documentos de normativa. Sube tus PDFs, haz una pregunta y obt®¶n una respuesta basada en ellos.")
+st.write("Esta aplicaciËªän te permite hacer consultas en lenguaje natural sobre tus documentos de normativa. Sube tus PDFs, haz una pregunta y obtË∞∑n una respuesta basada en ellos.")
 
-# --- CONFIGURACI®ÆN DE LA API KEY Y GESTI®ÆN DE BD ---
+# --- CONFIGURACIËªäN DE LA API KEY Y GESTIËªäN DE BD ---
 with st.sidebar:
-    st.header("Configuraci®Æn")
+    st.header("ConfiguraciËªän")
     google_api_key = st.text_input("Ingresa tu API Key de Google AI", type="password")
     if google_api_key:
         os.environ["GOOGLE_API_KEY"] = google_api_key
@@ -34,12 +34,12 @@ with st.sidebar:
     
     st.divider()
 
-    st.subheader("Gesti®Æn de la Base de Datos")
+    st.subheader("GestiËªän de la Base de Datos")
     if st.button("Reiniciar y borrar base de datos"):
         if os.path.exists(DIRECTORIO_PERSISTENTE):
             with st.spinner("Borrando base de datos..."):
                 shutil.rmtree(DIRECTORIO_PERSISTENTE)
-            st.success("Base de datos borrada. La aplicaci®Æn se recargar®¢.")
+            st.success("Base de datos borrada. La aplicaciËªän se recargarËäç.")
             st.rerun()
         else:
             st.info("No hay ninguna base de datos para borrar.")
@@ -78,7 +78,7 @@ def cargar_y_procesar_documentos(ruta_documentos):
 
 @st.cache_resource
 def cargar_cadena_qa():
-    """Carga la cadena de consulta y recuperaci®Æn (RetrievalQA) con prompt de experto en espa?ol."""
+    """Carga la cadena de consulta y recuperaciËªän (RetrievalQA) con prompt de experto en espa?ol."""
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     
     vectordb = FAISS.load_local(DIRECTORIO_PERSISTENTE, embeddings, allow_dangerous_deserialization=True)
@@ -87,9 +87,9 @@ def cargar_cadena_qa():
     retriever = vectordb.as_retriever(search_kwargs={"k": 7})
     
     template = """
-    Act®≤a como un experto en normativa fotovoltaica. Tu tarea es analizar el siguiente contexto extra®™do de documentos normativos y responder la pregunta del usuario de manera clara, profesional y concisa en espa?ol.
+    ActËøÜa como un experto en normativa fotovoltaica. Tu tarea es analizar el siguiente contexto extraËµ§do de documentos normativos y responder la pregunta del usuario de manera clara, profesional y concisa en espa?ol.
 
-    No te limites a repetir el texto. Sintetiza la informaci®Æn, haz deducciones l®Ægicas basadas en los art®™culos proporcionados y ofrece una conclusi®Æn pr®¢ctica. Si el texto no aborda directamente la pregunta, ind®™calo, pero tambi®¶n explica las posibles interpretaciones o art®™culos relacionados que podr®™an aplicarse al caso.
+    No te limites a repetir el texto. Sintetiza la informaciËªän, haz deducciones lËªägicas basadas en los artËµ§culos proporcionados y ofrece una conclusiËªän prËäçctica. Si el texto no aborda directamente la pregunta, indËµ§calo, pero tambiË∞∑n explica las posibles interpretaciones o artËµ§culos relacionados que podrËµ§an aplicarse al caso.
 
     Contexto normativo:
     {context}
@@ -109,14 +109,14 @@ def cargar_cadena_qa():
     )
     return qa_chain
 
-# --- L®ÆGICA PRINCIPAL DE LA APLICACI®ÆN ---
+# --- LËªäGICA PRINCIPAL DE LA APLICACIËªäN ---
 
 if not os.path.exists(DIRECTORIO_PERSISTENTE):
     st.warning("Base de datos vectorial no encontrada. Debes cargar documentos para crear una.")
     with st.sidebar:
         st.subheader("Cargar Documentos")
         uploaded_files = st.file_uploader(
-            "Sube tus archivos PDF de normativas aqu®™",
+            "Sube tus archivos PDF de normativas aquËµ§",
             type="pdf",
             accept_multiple_files=True
         )
@@ -131,23 +131,23 @@ if not os.path.exists(DIRECTORIO_PERSISTENTE):
                             f.write(uploaded_file.getbuffer())
                     
                     # 2. Procesar documentos y crear la BD
-                    with st.spinner("Procesando documentos... Esta operaci®Æn puede tardar varios minutos."):
+                    with st.spinner("Procesando documentos... Esta operaciËªän puede tardar varios minutos."):
                         cargar_y_procesar_documentos(DIRECTORIO_DOCUMENTOS)
 
-                    st.success("?Base de datos creada con ®¶xito!")
-                    st.info("La aplicaci®Æn se recargar®¢ para usar la nueva base de datos.")
+                    st.success("?Base de datos creada con Ë∞∑xito!")
+                    st.info("La aplicaciËªän se recargarËäç para usar la nueva base de datos.")
                     st.rerun()
 
                 except Exception as e:
-                    st.error(f"Ocurri®Æ un error al procesar los documentos: {e}")
+                    st.error(f"OcurriËªä un error al procesar los documentos: {e}")
                 # ----------------------------------------------
             else:
-                st.error("No has subido ning®≤n archivo.")
+                st.error("No has subido ningËøÜn archivo.")
 else:
     qa_chain = cargar_cadena_qa()
     
     st.header("Haz tu Consulta ??")
-    pregunta_usuario = st.text_area("Escribe aqu®™ tu pregunta sobre la normativa:")
+    pregunta_usuario = st.text_area("Escribe aquËµ§ tu pregunta sobre la normativa:")
 
     if st.button("Obtener Respuesta"):
         if pregunta_usuario:
@@ -161,10 +161,10 @@ else:
                     with st.expander("Ver fuentes utilizadas en la normativa"):
                         for doc in respuesta["source_documents"]:
                             nombre_archivo = os.path.basename(doc.metadata.get('source', 'N/A'))
-                            st.info(f"**Fuente:** {nombre_archivo} | **P®¢gina:** {doc.metadata.get('page', 'N/A', 0) + 1}")
+                            st.info(f"**Fuente:** {nombre_archivo} | **PËäçgina:** {doc.metadata.get('page', 'N/A', 0) + 1}")
                             st.caption(doc.page_content)
 
                 except Exception as e:
-                    st.error(f"Ocurri®Æ un error: {e}")
+                    st.error(f"OcurriËªä un error: {e}")
         else:
             st.warning("Por favor, escribe una pregunta.")
