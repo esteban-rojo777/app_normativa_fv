@@ -1,7 +1,7 @@
 streamlit
-langchain==0.1.20
-langchain-community==0.0.38
-langchain-google-genai # <-- CAMBIO PRINCIPAL
+langchain~=0.2.0
+langchain-community~=0.2.0
+langchain-google-genai~=1.0.5
 chromadb==0.4.24
 pypdf
 tiktoken
