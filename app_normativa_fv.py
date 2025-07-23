@@ -6,9 +6,8 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import os
 import streamlit as st
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
-from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -18,18 +17,15 @@ st.set_page_config(page_title="Asistente de Normativa FV", page_icon="💡", lay
 st.title("💡 Asistente de Consulta para Normativas Fotovoltaicas")
 st.write("Esta aplicación te permite hacer consultas en lenguaje natural sobre tus documentos de normativa. Sube tus PDFs, haz una pregunta y obtén una respuesta basada en ellos.")
 
-# --- CONFIGURACIÓN DE LA API KEY DE OPENAI ---
-# Se recomienda configurar la clave como un "secreto" de Streamlit
-# Por ahora, la pediremos en la barra lateral para facilitar las pruebas.
+# --- CONFIGURACIÓN DE LA API KEY ---
 with st.sidebar:
     st.header("Configuración")
-    openai_api_key = st.text_input("Ingresa tu API Key de OpenAI", type="password")
-    if openai_api_key:
-        os.environ["OPENAI_API_KEY"] = openai_api_key
+    google_api_key = st.text_input("Ingresa tu API Key de Google AI", type="password")
+    if google_api_key:
+        os.environ["GOOGLE_API_KEY"] = google_api_key
     else:
-        st.warning("Por favor, ingresa tu API Key de OpenAI para continuar.")
+        st.warning("Por favor, ingresa tu API Key de Google AI para continuar.")
         st.stop()
-
 
 # --- DIRECTORIOS Y RUTAS ---
 DIRECTORIO_PERSISTENTE = "db_chroma_streamlit"
@@ -60,7 +56,7 @@ def cargar_y_procesar_documentos(ruta_documentos):
     fragmentos = text_splitter.split_documents(documentos_cargados)
 
     st.info("Creando embeddings y la base de datos vectorial (puede tardar un momento)...")
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vectordb = Chroma.from_documents(
         documents=fragmentos,
         embedding=embeddings,
@@ -71,9 +67,9 @@ def cargar_y_procesar_documentos(ruta_documentos):
 
 def cargar_cadena_qa():
     """Carga la cadena de consulta y recuperación (RetrievalQA)."""
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vectordb = Chroma(persist_directory=DIRECTORIO_PERSISTENTE, embedding_function=embeddings)
-    llm = ChatOpenAI(model_name="gpt-4o", temperature=0.1, streaming=True)
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.1, convert_system_message_to_human=True)
     retriever = vectordb.as_retriever(search_kwargs={"k": 5})
     
     qa_chain = RetrievalQA.from_chain_type(
