@@ -120,11 +120,11 @@ else:
         if pregunta_usuario:
             with st.spinner("Buscando en la normativa y generando respuesta..."):
                 try:
-                    respuesta = qa_chain({"query": pregunta_usuario})
-                    
+                    respuesta = qa_chain.invoke(pregunta_usuario) # <--- NUEVA LÍNEA CON INVOKE
+
                     st.subheader("Respuesta:")
                     st.write(respuesta["result"])
-                    
+
                     with st.expander("Ver fuentes utilizadas en la normativa"):
                         for doc in respuesta["source_documents"]:
                             # Extraer el nombre del archivo de la ruta
